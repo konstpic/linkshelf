@@ -9,17 +9,22 @@
     "dev": "concurrently \"vite\" \"wait-on http://localhost:5173 && FORCE_DEV=1 ELECTRON_DISABLE_SECURITY_WARNINGS=1 electron .\"",
     "build": "vite build && node fix-paths.js && electron-builder --mac",
     "build:renderer": "vite build && node fix-paths.js",
+    "build:icons": "node build-icons.js",
     "start": "ELECTRON_DISABLE_SECURITY_WARNINGS=1 electron ."
   },
-  "dependencies": {  
+  "dependencies": {
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
-    "electron": "^33.0.0",
     "@vitejs/plugin-react": "^4.3.4",
     "concurrently": "^9.0.0",
+    "electron": "^33.0.0",
     "electron-builder": "^25.0.0",
+    "sharp": "^0.34.5",
     "vite": "^6.0.0",
     "wait-on": "^7.0.0"
   },
@@ -31,14 +36,17 @@
       "renderer/**/*",
       "main.cjs",
       "preload.cjs",
-      "package.json"
+      "bookmarksParser.cjs",
+      "package.json",
+      "assets/**/*"
     ],
     "directories": {
       "output": "release"
     },
     "mac": {
       "target": "dmg",
-      "category": "public.app-category.utilities"
+      "category": "public.app-category.utilities",
+      "icon": "assets/icon.png"
     }
   }
 }
