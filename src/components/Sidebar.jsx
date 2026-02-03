@@ -28,7 +28,7 @@ export default function Sidebar({
   }
 
   return (
-    <aside className={`sidebar ${collapsed ? 'collapsed' : ''}`}>
+    <aside className={`sidebar ${collapsed ? 'collapsed' : ''}`} data-tour="sidebar">
       <div className="sidebar-header">
         <div className="sidebar-logo">
           <svg viewBox="0 0 28 28" fill="none">
