@@ -19,6 +19,8 @@
 | **Один клик** | Открытие ссылки в Safari/Chrome по клику на карточку |
 | **macOS-стиль** | Vibrancy (матовое стекло), нативный менюбар |
 | **Локальные данные** | Всё хранится в `~/LinkShelf/links.json` — никаких облаков |
+| **Добавить из браузера** | Букмарклет и расширения для Chrome, Firefox, Safari |
+| **Папка данных** | Настраиваемый путь к `links.json` |
 
 ---
 
@@ -69,9 +71,39 @@ npm run build
 
 ---
 
+## Добавить из браузера
+
+### Букмарклет
+
+Нажмите кнопку **«Браузер»** в приложении, скопируйте код букмарклета. Создайте закладку в браузере и замените её URL на скопированный код. При клике на закладку текущая страница добавится в LinkShelf.
+
+### Расширения для браузеров
+
+Расширения с кнопкой «Add to LinkShelf» в панели инструментов:
+
+- **Chrome / Edge / Brave:** `npm run build:extensions`, затем «Load unpacked» в `chrome://extensions` → выберите `browser-extensions/chrome/`
+- **Firefox:** `npm run build:extensions`, затем `about:debugging` → «Load Temporary Add-on» → выберите `browser-extensions/firefox/manifest.json`
+- **Safari:** `npm run build:safari` создаст Xcode-проект; см. `browser-extensions/README.md`
+
+Подробности в [browser-extensions/README.md](browser-extensions/README.md).
+
+---
+
+## Папка данных
+
+По умолчанию данные хранятся в `~/LinkShelf/links.json`. Папку можно изменить:
+
+1. Кнопка **«Папка»** в топбаре → **«Изменить папку данных»**
+2. Выберите другую папку (например, в iCloud Drive для синхронизации)
+3. Файл `links.json` будет создан в выбранной папке
+
+Конфиг: `~/LinkShelf/config.json` с полем `dataPath`.
+
+---
+
 ## 📄 Данные
 
-Файл: **`~/LinkShelf/links.json`**
+Файл: **`~/LinkShelf/links.json`** (путь настраивается в «Папка» → «Изменить папку данных»)
 
 Формат:
 

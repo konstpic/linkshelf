@@ -9,12 +9,13 @@ import {
 } from '@dnd-kit/core'
 import { SortableContext, arrayMove, rectSortingStrategy } from '@dnd-kit/sortable'
 import { useDataStore } from './hooks/useDataStore'
-import { openExternal, exportData, importData, importBookmarks, openDataFolder } from './api/linkShelf'
+import { openExternal, exportData, importData, importBookmarks, openDataFolder, setDataPath, getPendingAddData } from './api/linkShelf'
 import { getDomain } from './utils/url'
 import Sidebar from './components/Sidebar'
 import LinkCard from './components/LinkCard'
 import SortableLinkCard from './components/SortableLinkCard'
 import LinkModal from './components/LinkModal'
+import BookmarkletModal from './components/BookmarkletModal'
 import ContextMenu from './components/ContextMenu'
 
 const SORT_STORAGE_KEY = 'linkshelf_sortOrder'
@@ -55,6 +56,8 @@ export default function App() {
   const [viewMode, setViewModeState] = useState(getStoredViewMode)
   const [theme, setThemeState] = useState(getStoredTheme)
   const [contextMenu, setContextMenu] = useState(null)
+  const [bookmarkletModalOpen, setBookmarkletModalOpen] = useState(false)
+  const [moreMenuOpen, setMoreMenuOpen] = useState(false)
 
   const setSortOrder = (v) => {
     setSortOrderState(v)
@@ -101,12 +104,17 @@ export default function App() {
     const api = typeof window !== 'undefined' ? window.linkShelfAPI : null
     if (!api?.onOpenAddModal) return
     const unsubAdd = api.onOpenAddModal(() => setModalLink({}))
+    const unsubAddWithData = api.onOpenAddWithData?.((data) => setModalLink(data || {}))
     const unsubImport = api.onOpenImport?.(() => handleImportRef.current?.())
     const unsubExport = api.onOpenExport?.(() => handleExportRef.current?.())
     const unsubFolder = api.onOpenDataFolder?.(() => openDataFolder())
     const unsubReload = api.onDataReload?.(() => reload())
+    getPendingAddData?.().then((data) => {
+      if (data && data.url) setModalLink(data)
+    })
     return () => {
       unsubAdd?.()
+      unsubAddWithData?.()
       unsubImport?.()
       unsubExport?.()
       unsubFolder?.()
@@ -278,18 +286,49 @@ export default function App() {
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
-          <button type="button" className="btn-secondary" onClick={openDataFolder} title="Открыть папку данных">
-            Папка
-          </button>
-          <button type="button" className="btn-secondary" onClick={handleImport} title="Импорт JSON">
-            Импорт
-          </button>
-          <button type="button" className="btn-secondary" onClick={handleImportBookmarks} title="Импорт закладок HTML">
-            Закладки
-          </button>
-          <button type="button" className="btn-secondary" onClick={handleExport} title="Экспорт JSON">
-            Экспорт
-          </button>
+          <div className="more-menu-wrap">
+            <button
+              type="button"
+              className="btn-more"
+              onClick={() => setMoreMenuOpen(!moreMenuOpen)}
+              title="Ещё"
+              aria-label="Ещё"
+            >
+              ⋮
+            </button>
+            {moreMenuOpen && (
+              <>
+                <div className="dropdown-backdrop" onClick={() => setMoreMenuOpen(false)} />
+                <div className="more-menu">
+                  <button type="button" onClick={() => { openDataFolder(); setMoreMenuOpen(false) }}>
+                    Открыть папку
+                  </button>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const result = await setDataPath()
+                      setMoreMenuOpen(false)
+                      if (result?.ok) await reload()
+                    }}
+                  >
+                    Изменить папку данных
+                  </button>
+                  <button type="button" onClick={() => { handleImport(); setMoreMenuOpen(false) }}>
+                    Импорт JSON
+                  </button>
+                  <button type="button" onClick={() => { handleImportBookmarks(); setMoreMenuOpen(false) }}>
+                    Импорт закладок
+                  </button>
+                  <button type="button" onClick={() => { handleExport(); setMoreMenuOpen(false) }}>
+                    Экспорт
+                  </button>
+                  <button type="button" onClick={() => { setBookmarkletModalOpen(true); setMoreMenuOpen(false) }}>
+                    Добавить из браузера
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
           <div className="view-segment">
             <button
               type="button"
@@ -361,8 +400,8 @@ export default function App() {
             </button>
           </div>
           <button className="btn-add-link" onClick={() => setModalLink({})}>
-            <span style={{ fontSize: 16 }}>+</span> Добавить
-          </button>
+              <span style={{ fontSize: 16 }}>+</span> Добавить
+            </button>
         </div>
 
         <div className="grid-wrap">
@@ -413,11 +452,15 @@ export default function App() {
 
       {modalLink !== null && (
         <LinkModal
-          link={modalLink.id ? modalLink : null}
+          link={modalLink}
           categories={categories}
           onSave={addOrUpdateLink}
           onClose={() => setModalLink(null)}
         />
+      )}
+
+      {bookmarkletModalOpen && (
+        <BookmarkletModal onClose={() => setBookmarkletModalOpen(false)} />
       )}
 
       {contextMenu && (

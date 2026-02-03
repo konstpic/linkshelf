@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "LinkShelf",
+  "version": "1.0.0",
+  "description": "Add the current page to LinkShelf",
+  "permissions": [
+    "activeTab"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/16.png",
+      "48": "icons/48.png",
+      "128": "icons/128.png"
+    },
+    "default_title": "Add to LinkShelf"
+  },
+  "icons": {
+    "16": "icons/16.png",
+    "48": "icons/48.png",
+    "128": "icons/128.png"
+  }
+}

@@ -10,6 +10,8 @@
     "build": "vite build && node fix-paths.js && electron-builder --mac",
     "build:renderer": "vite build && node fix-paths.js",
     "build:icons": "node build-icons.js",
+    "build:extensions": "node build-extensions.js",
+    "build:safari": "npm run build:extensions && xcrun safari-web-extension-converter browser-extensions/chrome/ --app-name LinkShelf",
     "start": "ELECTRON_DISABLE_SECURITY_WARNINGS=1 electron ."
   },
   "dependencies": {
@@ -46,7 +48,16 @@
     "mac": {
       "target": "dmg",
       "category": "public.app-category.utilities",
-      "icon": "assets/icon.png"
+      "icon": "assets/icon.png",
+      "executableName": "LinkShelf",
+      "extendInfo": {
+        "CFBundleName": "LinkShelf",
+        "CFBundleDisplayName": "LinkShelf"
+      },
+      "protocols": {
+        "name": "LinkShelf",
+        "schemes": ["linkshelf"]
+      }
     }
   }
 }

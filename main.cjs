@@ -68,6 +68,9 @@ function fetchPagePreviewImage(url) {
 // Дополнительно отключаем предупреждения через command line
 app.commandLine.appendSwitch('disable-features', 'VizDisplayCompositor')
 
+// Имя приложения в меню и Dock (в dev режиме иначе показывается "Electron")
+app.setName('LinkShelf')
+
 // ─── Определение режима ───
 // isDev будет определен в createWindow на основе наличия собранных файлов
 let isDev = !app.isPackaged // По умолчанию
@@ -81,16 +84,41 @@ function log(msg) {
   } catch(e) {}
 }
 
-// ─── Data: ~/LinkShelf/links.json ───
-const dataDir  = path.join(app.getPath('home'), 'LinkShelf')
-const dataFile = path.join(dataDir, 'links.json')
+// ─── Data: ~/LinkShelf/links.json (configurable via config.json) ───
+const configDir = path.join(app.getPath('home'), 'LinkShelf')
+const configFile = path.join(configDir, 'config.json')
+
+function readConfig() {
+  try {
+    if (fs.existsSync(configFile)) {
+      const raw = fs.readFileSync(configFile, 'utf-8')
+      const c = JSON.parse(raw)
+      if (c && typeof c.dataPath === 'string' && c.dataPath.trim()) {
+        const p = c.dataPath.trim()
+        if (fs.existsSync(p) && fs.statSync(p).isDirectory()) return { dataPath: p }
+      }
+    }
+  } catch (e) {}
+  return {}
+}
+
+function getDataDir() {
+  const cfg = readConfig()
+  return cfg.dataPath || configDir
+}
 
 function ensureDataDir() {
-  if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true })
+  const dir = getDataDir()
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
+}
+
+function getDataFile() {
+  return path.join(getDataDir(), 'links.json')
 }
 
 function readLinks() {
   ensureDataDir()
+  const dataFile = getDataFile()
   if (!fs.existsSync(dataFile)) return { categories: ['Всё'], links: [] }
   try {
     return JSON.parse(fs.readFileSync(dataFile, 'utf-8'))
@@ -101,17 +129,18 @@ function readLinks() {
 
 function writeLinks(data) {
   ensureDataDir()
-  fs.writeFileSync(dataFile, JSON.stringify(data, null, 2), 'utf-8')
+  fs.writeFileSync(getDataFile(), JSON.stringify(data, null, 2), 'utf-8')
 }
 
 // ─── IPC ───
 ipcMain.handle('links:load', () => readLinks())
+ipcMain.handle('links:getPendingAddData', () => consumePendingAddData())
 ipcMain.handle('links:save', (_event, data) => { writeLinks(data); return true })
 ipcMain.handle('links:open', (_event, url)  => { shell.openExternal(url) })
 
 ipcMain.handle('links:export', async () => {
   const { filePath } = await dialog.showSaveDialog(mainWindow, {
-    defaultPath: path.join(dataDir, 'links-export.json'),
+    defaultPath: path.join(getDataDir(), 'links-export.json'),
     filters: [{ name: 'JSON', extensions: ['json'] }],
   })
   if (!filePath) return { ok: false }
@@ -144,8 +173,31 @@ ipcMain.handle('links:import', async () => {
 })
 
 ipcMain.handle('links:openDataFolder', () => {
-  shell.openPath(dataDir).catch(() => {})
+  shell.openPath(getDataDir()).catch(() => {})
   return true
+})
+
+ipcMain.handle('links:getDataPath', () => getDataDir())
+
+ipcMain.handle('links:setDataPath', async () => {
+  const { filePaths } = await dialog.showOpenDialog(mainWindow, {
+    properties: ['openDirectory'],
+    title: 'Выберите папку для хранения данных',
+  })
+  if (!filePaths || filePaths.length === 0) return { ok: false }
+  const selected = filePaths[0]
+  if (!fs.existsSync(selected) || !fs.statSync(selected).isDirectory()) {
+    return { ok: false, error: 'Неверная папка' }
+  }
+  try {
+    if (!fs.existsSync(configDir)) fs.mkdirSync(configDir, { recursive: true })
+    const cfg = readConfig()
+    const newCfg = { ...cfg, dataPath: selected }
+    fs.writeFileSync(configFile, JSON.stringify(newCfg, null, 2), 'utf-8')
+    return { ok: true, dataPath: selected }
+  } catch (e) {
+    return { ok: false, error: e.message }
+  }
 })
 
 ipcMain.handle('links:fetchFavicon', (_event, url) => {
@@ -213,7 +265,9 @@ ipcMain.handle('links:importBookmarks', async () => {
   }
 })
 
-// ─── Custom URL scheme: linkshelf://add?url=... ───
+// ─── Custom URL scheme: linkshelf://add?url=...&title=... ───
+let pendingAddData = null
+
 function handleOpenUrl(url) {
   if (!url || !url.startsWith('linkshelf://')) return
   try {
@@ -223,32 +277,24 @@ function handleOpenUrl(url) {
     if (!rawUrl) return
     const decoded = decodeURIComponent(rawUrl.trim())
     if (!decoded.startsWith('http://') && !decoded.startsWith('https://')) return
-    const data = readLinks()
-    const categories = data.categories && data.categories.length ? data.categories : ['Всё']
-    const links = Array.isArray(data.links) ? data.links : []
-    const id = String(Date.now())
-    const newLink = {
-      id,
-      title: '',
-      url: decoded,
-      category: categories[0] === 'Всё' ? (categories[1] || 'Всё') : categories[0],
-      tags: [],
-      description: '',
-      pinned: false,
-      order: links.length,
-      createdAt: Date.now(),
-      favicon: '',
-    }
-    links.push(newLink)
-    writeLinks({ categories, links })
+    const rawTitle = u.searchParams.get('title')
+    const title = rawTitle ? decodeURIComponent(rawTitle).trim().slice(0, 200) : ''
+    const data = { url: decoded, title }
+    pendingAddData = data
     if (mainWindow) {
       mainWindow.show()
       mainWindow.focus()
-      mainWindow.webContents.send('data-reload')
+      mainWindow.webContents.send('open-add-with-data', data)
     }
   } catch (e) {
     log('open-url parse error: ' + e.message)
   }
+}
+
+function consumePendingAddData() {
+  const d = pendingAddData
+  pendingAddData = null
+  return d
 }
 
 // ─── Window & Tray ───
@@ -287,7 +333,7 @@ function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
-    minWidth: 720,
+    minWidth: 860,
     minHeight: 500,
     vibrancy: 'under-window',
     visualEffectState: 'active',
