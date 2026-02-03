@@ -39,6 +39,16 @@ contextBridge.exposeInMainWorld('linkShelfAPI', {
     ipcRenderer.on('open-data-folder', handler)
     return () => ipcRenderer.removeListener('open-data-folder', handler)
   },
+  onOpenHelp: (callback) => {
+    const handler = () => callback()
+    ipcRenderer.on('open-help', handler)
+    return () => ipcRenderer.removeListener('open-help', handler)
+  },
+  onOpenOnboarding: (callback) => {
+    const handler = () => callback()
+    ipcRenderer.on('open-onboarding', handler)
+    return () => ipcRenderer.removeListener('open-onboarding', handler)
+  },
   onDataReload: (callback) => {
     const handler = () => callback()
     ipcRenderer.on('data-reload', handler)

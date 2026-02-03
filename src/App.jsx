@@ -16,6 +16,8 @@ import LinkCard from './components/LinkCard'
 import SortableLinkCard from './components/SortableLinkCard'
 import LinkModal from './components/LinkModal'
 import BookmarkletModal from './components/BookmarkletModal'
+import HelpModal from './components/HelpModal'
+import OnboardingTour, { isOnboardingDone } from './components/OnboardingTour'
 import ContextMenu from './components/ContextMenu'
 
 const SORT_STORAGE_KEY = 'linkshelf_sortOrder'
@@ -58,6 +60,8 @@ export default function App() {
   const [contextMenu, setContextMenu] = useState(null)
   const [bookmarkletModalOpen, setBookmarkletModalOpen] = useState(false)
   const [moreMenuOpen, setMoreMenuOpen] = useState(false)
+  const [helpModalOpen, setHelpModalOpen] = useState(false)
+  const [onboardingOpen, setOnboardingOpen] = useState(false)
 
   const setSortOrder = (v) => {
     setSortOrderState(v)
@@ -109,9 +113,12 @@ export default function App() {
     const unsubExport = api.onOpenExport?.(() => handleExportRef.current?.())
     const unsubFolder = api.onOpenDataFolder?.(() => openDataFolder())
     const unsubReload = api.onDataReload?.(() => reload())
+    const unsubHelp = api.onOpenHelp?.(() => setHelpModalOpen(true))
+    const unsubOnboarding = api.onOpenOnboarding?.(() => setOnboardingOpen(true))
     getPendingAddData?.().then((data) => {
       if (data && data.url) setModalLink(data)
     })
+    if (!isOnboardingDone()) setTimeout(() => setOnboardingOpen(true), 400)
     return () => {
       unsubAdd?.()
       unsubAddWithData?.()
@@ -119,6 +126,8 @@ export default function App() {
       unsubExport?.()
       unsubFolder?.()
       unsubReload?.()
+      unsubHelp?.()
+      unsubOnboarding?.()
     }
   }, [reload])
 
@@ -274,7 +283,7 @@ export default function App() {
 
       <div className="main-content">
         <div className="topbar">
-          <div className="search-wrap">
+          <div className="search-wrap" data-tour="search">
             <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
               <circle cx="7" cy="7" r="4.5" />
               <line x1="10.5" y1="10.5" x2="14" y2="14" />
@@ -286,7 +295,7 @@ export default function App() {
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
-          <div className="more-menu-wrap">
+          <div className="more-menu-wrap" data-tour="more">
             <button
               type="button"
               className="btn-more"
@@ -324,6 +333,12 @@ export default function App() {
                   </button>
                   <button type="button" onClick={() => { setBookmarkletModalOpen(true); setMoreMenuOpen(false) }}>
                     Добавить из браузера
+                  </button>
+                  <button type="button" onClick={() => { setHelpModalOpen(true); setMoreMenuOpen(false) }}>
+                    Справка
+                  </button>
+                  <button type="button" onClick={() => { setOnboardingOpen(true); setMoreMenuOpen(false) }}>
+                    Показать обучение
                   </button>
                 </div>
               </>
@@ -399,12 +414,12 @@ export default function App() {
               ⚙
             </button>
           </div>
-          <button className="btn-add-link" onClick={() => setModalLink({})}>
+          <button className="btn-add-link" onClick={() => setModalLink({})} data-tour="add">
               <span style={{ fontSize: 16 }}>+</span> Добавить
             </button>
         </div>
 
-        <div className="grid-wrap">
+        <div className="grid-wrap" data-tour="grid">
           {sortedFiltered.length === 0 ? (
             <div className="empty-state">
               <div className="empty-icon">🔗</div>
@@ -461,6 +476,17 @@ export default function App() {
 
       {bookmarkletModalOpen && (
         <BookmarkletModal onClose={() => setBookmarkletModalOpen(false)} />
+      )}
+
+      {helpModalOpen && (
+        <HelpModal onClose={() => setHelpModalOpen(false)} />
+      )}
+
+      {onboardingOpen && (
+        <OnboardingTour
+          onComplete={() => setOnboardingOpen(false)}
+          onSkip={() => setOnboardingOpen(false)}
+        />
       )}
 
       {contextMenu && (
