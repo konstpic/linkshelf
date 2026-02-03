@@ -2,9 +2,68 @@
 // Отключаем все предупреждения безопасности (приложение только для личного использования)
 process.env.ELECTRON_DISABLE_SECURITY_WARNINGS = '1'
 
-const { app, BrowserWindow, ipcMain, Menu, shell, session } = require('electron')
+const { app, BrowserWindow, ipcMain, Menu, shell, session, dialog, globalShortcut, Tray, nativeImage } = require('electron')
 const path = require('path')
 const fs   = require('fs')
+const https = require('https')
+const http = require('http')
+const { parseBookmarksHTML } = require('./bookmarksParser.cjs')
+
+function getDomainFromUrl(url) {
+  try {
+    const u = new URL(url)
+    return u.hostname.replace(/^www\./, '')
+  } catch {
+    return ''
+  }
+}
+
+function fetchPageTitle(url) {
+  return new Promise((resolve) => {
+    const protocol = url.startsWith('https') ? https : http
+    const req = protocol.get(url, { headers: { 'User-Agent': 'LinkShelf/1.0' }, timeout: 8000 }, (res) => {
+      const chunks = []
+      res.on('data', (chunk) => chunks.push(chunk))
+      res.on('end', () => {
+        const html = Buffer.concat(chunks).toString('utf-8')
+        const match = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)
+        resolve(match ? match[1].replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim().slice(0, 200) : '')
+      })
+    })
+    req.on('error', () => resolve(''))
+    req.on('timeout', () => { req.destroy(); resolve('') })
+  })
+}
+
+function fetchPagePreviewImage(url) {
+  return new Promise((resolve) => {
+    const protocol = url.startsWith('https') ? https : http
+    const req = protocol.get(url, { headers: { 'User-Agent': 'LinkShelf/1.0' }, timeout: 5000 }, (res) => {
+      const chunks = []
+      res.on('data', (chunk) => chunks.push(chunk))
+      res.on('end', () => {
+        const html = Buffer.concat(chunks).toString('utf-8')
+        const ogMatch = html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i) ||
+          html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i)
+        const twMatch = html.match(/<meta[^>]+name=["']twitter:image["'][^>]+content=["']([^"']+)["']/i) ||
+          html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+name=["']twitter:image["']/i)
+        const raw = (ogMatch && ogMatch[1]) || (twMatch && twMatch[1])
+        if (!raw || !raw.trim()) {
+          resolve('')
+          return
+        }
+        try {
+          const absolute = raw.startsWith('http') ? raw : new URL(raw.trim(), url).href
+          resolve(absolute)
+        } catch {
+          resolve('')
+        }
+      })
+    })
+    req.on('error', () => resolve(''))
+    req.on('timeout', () => { req.destroy(); resolve('') })
+  })
+}
 
 // Дополнительно отключаем предупреждения через command line
 app.commandLine.appendSwitch('disable-features', 'VizDisplayCompositor')
@@ -50,8 +109,161 @@ ipcMain.handle('links:load', () => readLinks())
 ipcMain.handle('links:save', (_event, data) => { writeLinks(data); return true })
 ipcMain.handle('links:open', (_event, url)  => { shell.openExternal(url) })
 
-// ─── Window ───
+ipcMain.handle('links:export', async () => {
+  const { filePath } = await dialog.showSaveDialog(mainWindow, {
+    defaultPath: path.join(dataDir, 'links-export.json'),
+    filters: [{ name: 'JSON', extensions: ['json'] }],
+  })
+  if (!filePath) return { ok: false }
+  try {
+    const data = readLinks()
+    fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf-8')
+    return { ok: true }
+  } catch (e) {
+    return { ok: false, error: e.message }
+  }
+})
+
+ipcMain.handle('links:import', async () => {
+  const { filePath } = await dialog.showOpenDialog(mainWindow, {
+    filters: [{ name: 'JSON', extensions: ['json'] }],
+    properties: ['openFile'],
+  })
+  if (!filePath || filePath.length === 0) return { ok: false }
+  try {
+    const raw = fs.readFileSync(filePath[0], 'utf-8')
+    const data = JSON.parse(raw)
+    if (!data || typeof data !== 'object' || !Array.isArray(data.links)) {
+      return { ok: false, error: 'Invalid format' }
+    }
+    writeLinks(data)
+    return { ok: true, data }
+  } catch (e) {
+    return { ok: false, error: e.message }
+  }
+})
+
+ipcMain.handle('links:openDataFolder', () => {
+  shell.openPath(dataDir).catch(() => {})
+  return true
+})
+
+ipcMain.handle('links:fetchFavicon', (_event, url) => {
+  const domain = getDomainFromUrl(url)
+  if (!domain) return ''
+  return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=64`
+})
+
+ipcMain.handle('links:fetchPageTitle', async (_event, url) => {
+  try {
+    return await fetchPageTitle(url)
+  } catch {
+    return ''
+  }
+})
+
+ipcMain.handle('links:fetchPreviewImage', async (_event, url) => {
+  try {
+    return await fetchPagePreviewImage(url)
+  } catch {
+    return ''
+  }
+})
+
+ipcMain.handle('links:importBookmarks', async () => {
+  const { filePath } = await dialog.showOpenDialog(mainWindow, {
+    filters: [{ name: 'HTML', extensions: ['html', 'htm'] }],
+    properties: ['openFile'],
+  })
+  if (!filePath || filePath.length === 0) return { ok: false }
+  try {
+    const raw = fs.readFileSync(filePath[0], 'utf-8')
+    const entries = parseBookmarksHTML(raw)
+    const data = readLinks()
+    const categories = Array.isArray(data.categories) && data.categories.length ? data.categories : ['Всё']
+    const links = Array.isArray(data.links) ? data.links : []
+    const seen = new Set(links.map((l) => l.url))
+    const newCategories = [...categories]
+    let added = 0
+    for (const { title, url, folder } of entries) {
+      if (seen.has(url)) continue
+      const cat = folder && folder.trim() ? folder.trim() : 'Импорт'
+      if (!newCategories.includes(cat) && cat !== 'Всё') newCategories.push(cat)
+      const category = newCategories.includes(cat) ? cat : newCategories[1] || 'Всё'
+      const now = Date.now()
+      links.push({
+        id: String(now + added),
+        title: title || url,
+        url,
+        category,
+        tags: [],
+        description: '',
+        pinned: false,
+        order: links.length,
+        createdAt: now,
+        favicon: '',
+      })
+      seen.add(url)
+      added++
+    }
+    writeLinks({ categories: newCategories, links })
+    return { ok: true, data: { categories: newCategories, links }, added }
+  } catch (e) {
+    return { ok: false, error: e.message }
+  }
+})
+
+// ─── Custom URL scheme: linkshelf://add?url=... ───
+function handleOpenUrl(url) {
+  if (!url || !url.startsWith('linkshelf://')) return
+  try {
+    const u = new URL(url)
+    if (u.hostname !== 'add' && u.pathname !== '/add') return
+    const rawUrl = u.searchParams.get('url')
+    if (!rawUrl) return
+    const decoded = decodeURIComponent(rawUrl.trim())
+    if (!decoded.startsWith('http://') && !decoded.startsWith('https://')) return
+    const data = readLinks()
+    const categories = data.categories && data.categories.length ? data.categories : ['Всё']
+    const links = Array.isArray(data.links) ? data.links : []
+    const id = String(Date.now())
+    const newLink = {
+      id,
+      title: '',
+      url: decoded,
+      category: categories[0] === 'Всё' ? (categories[1] || 'Всё') : categories[0],
+      tags: [],
+      description: '',
+      pinned: false,
+      order: links.length,
+      createdAt: Date.now(),
+      favicon: '',
+    }
+    links.push(newLink)
+    writeLinks({ categories, links })
+    if (mainWindow) {
+      mainWindow.show()
+      mainWindow.focus()
+      mainWindow.webContents.send('data-reload')
+    }
+  } catch (e) {
+    log('open-url parse error: ' + e.message)
+  }
+}
+
+// ─── Window & Tray ───
 let mainWindow
+let tray = null
+
+function toggleWindow() {
+  if (!mainWindow) return
+  if (mainWindow.isVisible()) {
+    mainWindow.hide()
+  } else {
+    mainWindow.show()
+    mainWindow.focus()
+  }
+}
 
 function createWindow() {
   // В пакетированном приложении ресурсы лежат внутри .app bundle:
@@ -73,8 +285,8 @@ function createWindow() {
   const preloadPath = path.join(currentAppRoot, 'preload.cjs')
 
   mainWindow = new BrowserWindow({
-    width: 960,
-    height: 680,
+    width: 1200,
+    height: 800,
     minWidth: 720,
     minHeight: 500,
     vibrancy: 'under-window',
@@ -95,11 +307,24 @@ function createWindow() {
     },
   })
 
+  const iconPath = path.join(currentAppRoot, 'assets', 'icon.png')
+  if (fs.existsSync(iconPath)) {
+    const icon = nativeImage.createFromPath(iconPath)
+    mainWindow.setIcon(icon)
+    if (process.platform === 'darwin' && app.dock) app.dock.setIcon(icon)
+  }
+
   const menu = Menu.buildFromTemplate([
     {
       label: 'LinkShelf',
       submenu: [
         { role: 'about' },
+        { type: 'separator' },
+        { label: 'Add Link', accelerator: 'Cmd+N', click: () => mainWindow?.webContents?.send('open-add-modal') },
+        { type: 'separator' },
+        { label: 'Import…', click: () => mainWindow?.webContents?.send('open-import') },
+        { label: 'Export…', click: () => mainWindow?.webContents?.send('open-export') },
+        { label: 'Open Data Folder', click: () => mainWindow?.webContents?.send('open-data-folder') },
         { type: 'separator' },
         { role: 'quit' },
       ],
@@ -141,9 +366,10 @@ function createWindow() {
   })
 
   if (isDev) {
-    // Dev режим - подключаемся к Vite dev-серверу
-    log('Loading from Vite dev server: http://localhost:5173')
-    mainWindow.loadURL('http://localhost:5173').catch(err => {
+    // Dev режим — загружаем с 127.0.0.1 (режим хоста), не localhost, чтобы не нарваться на политики/ограничения
+    const devHost = 'http://127.0.0.1:5173'
+    log('Loading from Vite dev server: ' + devHost)
+    mainWindow.loadURL(devHost).catch(err => {
       log('Error loading dev server: ' + err.message)
       if (isDev) mainWindow.webContents.openDevTools()
     })
@@ -161,9 +387,32 @@ function createWindow() {
       mainWindow.loadURL('data:text/html,<h1>Error: index.html not found</h1><p>Path: ' + indexPath + '</p><p>Please run: npm run build:renderer</p>')
     }
   }
+
+  mainWindow.on('close', (event) => {
+    if (tray && !app.isQuitting) {
+      event.preventDefault()
+      mainWindow.hide()
+    }
+  })
+
+  // Tray
+  const trayIconPath = path.join(currentAppRoot, 'assets', 'tray.png')
+  if (fs.existsSync(trayIconPath)) {
+    tray = new Tray(nativeImage.createFromPath(trayIconPath))
+    tray.setToolTip('LinkShelf')
+    tray.on('click', () => toggleWindow())
+    tray.setContextMenu(Menu.buildFromTemplate([
+      { label: 'Открыть LinkShelf', click: () => toggleWindow() },
+      { label: 'Добавить ссылку', click: () => { mainWindow?.show(); mainWindow?.focus(); mainWindow?.webContents?.send('open-add-modal') } },
+      { type: 'separator' },
+      { label: 'Выход', click: () => { app.isQuitting = true; app.quit() } },
+    ]))
+  }
 }
 
 app.whenReady().then(() => {
+  app.setAsDefaultProtocolClient('linkshelf')
+
   // ─── Убираем CSP ограничения (приложение только для личного использования) ───
   session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
     const responseHeaders = { ...details.responseHeaders }
@@ -174,11 +423,32 @@ app.whenReady().then(() => {
   })
 
   createWindow()
+
+  globalShortcut.register('CommandOrControl+Shift+L', () => {
+    toggleWindow()
+  })
+
+  app.on('open-url', (event, url) => {
+    event.preventDefault()
+    handleOpenUrl(url)
+  })
+
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
+    else mainWindow?.show()
   })
+
+  if (process.platform === 'darwin') {
+    const protocolUrl = process.argv.find((arg) => arg.startsWith('linkshelf://'))
+    if (protocolUrl) handleOpenUrl(protocolUrl)
+  }
 })
 
 app.on('window-all-closed', () => {
+  globalShortcut.unregisterAll()
   if (process.platform !== 'darwin') app.quit()
+})
+
+app.on('before-quit', () => {
+  app.isQuitting = true
 })

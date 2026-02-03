@@ -6,6 +6,7 @@ export default defineConfig({
   base: './',
   server: {
     port: 5173,
+    host: true, // слушать на 0.0.0.0 — режим хоста, не только localhost (помогает с превью/политиками)
   },
   build: {
     outDir: 'renderer',

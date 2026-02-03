@@ -83,11 +83,19 @@ npm run build
       "id": "1234567890",
       "title": "GitHub",
       "url": "https://github.com",
-      "category": "Работа"
+      "category": "Работа",
+      "tags": ["код", "репозиторий"],
+      "description": "",
+      "pinned": false,
+      "order": 0,
+      "createdAt": 1700000000000,
+      "favicon": ""
     }
   ]
 }
 ```
+
+Поля `tags`, `description`, `pinned`, `order`, `createdAt`, `favicon` опциональны; старые данные без них остаются валидными.
 
 Файл можно править вручную — при следующем открытии приложения изменения подхватятся.
 
