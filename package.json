@@ -7,7 +7,7 @@
   "author": "k.pichugin",
   "scripts": {
     "dev": "concurrently \"vite\" \"wait-on http://localhost:5173 && FORCE_DEV=1 ELECTRON_DISABLE_SECURITY_WARNINGS=1 electron .\"",
-    "build": "vite build && node fix-paths.js && electron-builder --mac",
+    "build": "npm run build:extensions && vite build && node fix-paths.js && electron-builder --mac",
     "build:renderer": "vite build && node fix-paths.js",
     "build:icons": "node build-icons.js",
     "build:extensions": "node build-extensions.js",
@@ -34,13 +34,15 @@
     "appId": "com.linkshelf.app",
     "productName": "LinkShelf",
     "asar": true,
+    "asarUnpack": ["browser-extensions/**"],
     "files": [
       "renderer/**/*",
       "main.cjs",
       "preload.cjs",
       "bookmarksParser.cjs",
       "package.json",
-      "assets/**/*"
+      "assets/**/*",
+      "browser-extensions/**/*"
     ],
     "directories": {
       "output": "release"

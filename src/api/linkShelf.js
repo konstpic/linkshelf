@@ -43,6 +43,10 @@ export function getPendingAddData() {
   return Promise.resolve(null)
 }
 
+export function openExtensionInBrowser(browser) {
+  if (api) return api.openExtensionInBrowser(browser)
+}
+
 export async function setDataPath() {
   if (api) return api.setDataPath()
   return { ok: false }

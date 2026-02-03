@@ -9,7 +9,7 @@ import {
 } from '@dnd-kit/core'
 import { SortableContext, arrayMove, rectSortingStrategy } from '@dnd-kit/sortable'
 import { useDataStore } from './hooks/useDataStore'
-import { openExternal, exportData, importData, importBookmarks, openDataFolder, setDataPath, getPendingAddData } from './api/linkShelf'
+import { openExternal, exportData, importData, importBookmarks, openDataFolder, setDataPath, getPendingAddData, openExtensionInBrowser } from './api/linkShelf'
 import { getDomain } from './utils/url'
 import Sidebar from './components/Sidebar'
 import LinkCard from './components/LinkCard'
@@ -334,6 +334,18 @@ export default function App() {
                   <button type="button" onClick={() => { setBookmarkletModalOpen(true); setMoreMenuOpen(false) }}>
                     Добавить из браузера
                   </button>
+                  <div className="more-menu-divider" />
+                  <span className="more-menu-label">Расширение</span>
+                  <button type="button" onClick={() => { openExtensionInBrowser('chrome'); setMoreMenuOpen(false) }}>
+                    Chrome
+                  </button>
+                  <button type="button" onClick={() => { openExtensionInBrowser('firefox'); setMoreMenuOpen(false) }}>
+                    Firefox
+                  </button>
+                  <button type="button" onClick={() => { openExtensionInBrowser('safari'); setMoreMenuOpen(false) }}>
+                    Safari
+                  </button>
+                  <div className="more-menu-divider" />
                   <button type="button" onClick={() => { setHelpModalOpen(true); setMoreMenuOpen(false) }}>
                     Справка
                   </button>

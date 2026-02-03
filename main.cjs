@@ -5,6 +5,7 @@ process.env.ELECTRON_DISABLE_SECURITY_WARNINGS = '1'
 const { app, BrowserWindow, ipcMain, Menu, shell, session, dialog, globalShortcut, Tray, nativeImage } = require('electron')
 const path = require('path')
 const fs   = require('fs')
+const { exec } = require('child_process')
 const https = require('https')
 const http = require('http')
 const { parseBookmarksHTML } = require('./bookmarksParser.cjs')
@@ -135,6 +136,10 @@ function writeLinks(data) {
 // ─── IPC ───
 ipcMain.handle('links:load', () => readLinks())
 ipcMain.handle('links:getPendingAddData', () => consumePendingAddData())
+ipcMain.handle('links:openExtensionInBrowser', (_e, browser) => {
+  openExtensionInBrowser(browser)
+  return true
+})
 ipcMain.handle('links:save', (_event, data) => { writeLinks(data); return true })
 ipcMain.handle('links:open', (_event, url)  => { shell.openExternal(url) })
 
@@ -297,6 +302,44 @@ function consumePendingAddData() {
   return d
 }
 
+// ─── Path to browser extensions ───
+function getExtensionsBasePath() {
+  if (app.isPackaged) {
+    const unpacked = path.join(process.resourcesPath, 'app.asar.unpacked', 'browser-extensions')
+    if (fs.existsSync(unpacked)) return unpacked
+    return path.join(process.resourcesPath, 'browser-extensions')
+  }
+  return path.join(__dirname, 'browser-extensions')
+}
+
+function openExtensionInBrowser(browser) {
+  const base = getExtensionsBasePath()
+  const chromePath = path.join(base, 'chrome')
+  const firefoxPath = path.join(base, 'firefox')
+  if (!fs.existsSync(base)) {
+    dialog.showMessageBox(mainWindow, {
+      type: 'warning',
+      title: 'Расширения не найдены',
+      message: 'Папка browser-extensions не найдена. Запустите npm run build:extensions',
+    }).catch(() => {})
+    return
+  }
+  if (browser === 'chrome') {
+    shell.openPath(chromePath).catch(() => {})
+    exec('open -a "Google Chrome" "chrome://extensions"', () => {})
+  } else if (browser === 'firefox') {
+    shell.openPath(firefoxPath).catch(() => {})
+    exec('open -a "Firefox" "about:debugging#/runtime/this-firefox"', () => {})
+  } else if (browser === 'safari') {
+    shell.openPath(base).catch(() => {})
+    dialog.showMessageBox(mainWindow, {
+      type: 'info',
+      title: 'Расширение Safari',
+      message: 'Для Safari нужен Xcode. Запустите в терминале:\nnpm run build:safari\n\nЗатем откройте созданный проект в Xcode и соберите расширение.',
+    }).catch(() => {})
+  }
+}
+
 // ─── Window & Tray ───
 let mainWindow
 let tray = null
@@ -374,6 +417,14 @@ function createWindow() {
         { type: 'separator' },
         { label: 'Справка', click: () => mainWindow?.webContents?.send('open-help') },
         { label: 'Показать обучение', click: () => mainWindow?.webContents?.send('open-onboarding') },
+        {
+          label: 'Добавить расширение',
+          submenu: [
+            { label: 'Chrome', click: () => openExtensionInBrowser('chrome') },
+            { label: 'Firefox', click: () => openExtensionInBrowser('firefox') },
+            { label: 'Safari', click: () => openExtensionInBrowser('safari') },
+          ],
+        },
         { type: 'separator' },
         { role: 'quit' },
       ],

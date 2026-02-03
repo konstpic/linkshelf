@@ -10,6 +10,7 @@ contextBridge.exposeInMainWorld('linkShelfAPI', {
   openDataFolder: () => ipcRenderer.invoke('links:openDataFolder'),
   getDataPath: () => ipcRenderer.invoke('links:getDataPath'),
   getPendingAddData: () => ipcRenderer.invoke('links:getPendingAddData'),
+  openExtensionInBrowser: (browser) => ipcRenderer.invoke('links:openExtensionInBrowser', browser),
   setDataPath: () => ipcRenderer.invoke('links:setDataPath'),
   fetchFavicon: (url) => ipcRenderer.invoke('links:fetchFavicon', url),
   fetchPageTitle: (url) => ipcRenderer.invoke('links:fetchPageTitle', url),
