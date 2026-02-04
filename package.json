@@ -8,6 +8,10 @@
   "scripts": {
     "dev": "concurrently \"vite\" \"wait-on http://localhost:5173 && FORCE_DEV=1 ELECTRON_DISABLE_SECURITY_WARNINGS=1 electron .\"",
     "build": "npm run build:extensions && vite build && node fix-paths.js && electron-builder --mac",
+    "build:mac": "npm run build:extensions && vite build && node fix-paths.js && electron-builder --mac",
+    "build:win": "npm run build:extensions && vite build && node fix-paths.js && electron-builder --win",
+    "build:linux": "npm run build:extensions && vite build && node fix-paths.js && electron-builder --linux",
+    "build:all": "npm run build:extensions && vite build && node fix-paths.js && electron-builder --mac --win --linux",
     "build:renderer": "vite build && node fix-paths.js",
     "build:icons": "node build-icons.js",
     "build:extensions": "node build-extensions.js",
@@ -59,7 +63,55 @@
       "protocols": {
         "name": "LinkShelf",
         "schemes": ["linkshelf"]
-      }
+      },
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "entitlements.mac.plist",
+      "entitlementsInherit": "entitlements.mac.plist"
+    },
+    "osxSign": {
+      "identity": "App Self Signed",
+      "hardenedRuntime": true,
+      "gatekeeper-assess": false,
+      "entitlements": "entitlements.mac.plist",
+      "entitlements-inherit": "entitlements.mac.plist"
+    },
+    "osxNotarize": undefined,
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64", "ia32"]
+        },
+        {
+          "target": "portable",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "assets/icon.png",
+      "executableName": "LinkShelf",
+      "publisherName": "k.pichugin"
+    },
+    "linux": {
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": ["x64"]
+        },
+        {
+          "target": "deb",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "assets/icon.png",
+      "executableName": "LinkShelf",
+      "category": "Utility"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
     }
   }
 }
