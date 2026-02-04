@@ -9,6 +9,7 @@ jobs:
   build:
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         os: [macos-latest, windows-latest, ubuntu-latest]
         include:
@@ -29,6 +30,12 @@ jobs:
           node-version: '20'
           cache: 'npm'
 
+      - name: Install system dependencies (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libnss3-dev libatk-bridge2.0-dev libdrm2 libxkbcommon-dev libxcomposite-dev libxdamage-dev libxrandr-dev libgbm-dev libxss1 libasound2-dev
+
       - name: Install dependencies
         run: npm ci
 
@@ -39,6 +46,7 @@ jobs:
         run: npm run build:renderer
 
       - name: Build application
+        continue-on-error: false
         run: npm run build:${{ matrix.platform }}
         env:
           # Для macOS подпись (если нужна)
@@ -76,6 +84,7 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    continue-on-error: true
     
     steps:
       - name: Checkout code
