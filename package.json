@@ -4,14 +4,17 @@
   "description": "Quick-access link manager with site previews for macOS",
   "private": true,
   "main": "main.cjs",
-  "author": "k.pichugin",
+  "author": {
+    "name": "k.pichugin",
+    "email": "k.pichugin@example.com"
+  },
   "scripts": {
     "dev": "concurrently \"vite\" \"wait-on http://localhost:5173 && FORCE_DEV=1 ELECTRON_DISABLE_SECURITY_WARNINGS=1 electron .\"",
-    "build": "npm run build:extensions && vite build && node fix-paths.js && electron-builder --mac",
-    "build:mac": "npm run build:extensions && vite build && node fix-paths.js && electron-builder --mac",
-    "build:win": "npm run build:extensions && vite build && node fix-paths.js && electron-builder --win",
-    "build:linux": "npm run build:extensions && vite build && node fix-paths.js && electron-builder --linux",
-    "build:all": "npm run build:extensions && vite build && node fix-paths.js && electron-builder --mac --win --linux",
+    "build": "npm run build:extensions && vite build && node fix-paths.js && electron-builder --mac --publish never",
+    "build:mac": "npm run build:extensions && vite build && node fix-paths.js && electron-builder --mac --publish never",
+    "build:win": "npm run build:extensions && vite build && node fix-paths.js && electron-builder --win --publish never",
+    "build:linux": "npm run build:extensions && vite build && node fix-paths.js && electron-builder --linux --publish never",
+    "build:all": "npm run build:extensions && vite build && node fix-paths.js && electron-builder --mac --win --linux --publish never",
     "build:renderer": "vite build && node fix-paths.js",
     "build:icons": "node build-icons.js",
     "build:extensions": "node build-extensions.js",
@@ -97,7 +100,8 @@
       ],
       "icon": "assets/icon.png",
       "executableName": "LinkShelf",
-      "category": "Utility"
+      "category": "Utility",
+      "maintainer": "k.pichugin <k.pichugin@example.com>"
     },
     "nsis": {
       "oneClick": false,

@@ -47,10 +47,12 @@ jobs:
 
       - name: Build application
         continue-on-error: false
-        run: npm run build:${{ matrix.platform }}
+        run: npm run build:${{ matrix.platform }} -- --publish never
         env:
           # Для macOS подпись (если нужна)
           CSC_IDENTITY_AUTO_DISCOVERY: false
+          # Отключаем автоматическую публикацию electron-builder
+          GH_TOKEN: ""
           # Для Windows подпись (если нужна)
           # CSC_LINK: ${{ secrets.WINDOWS_CERT }}
           # CSC_KEY_PASSWORD: ${{ secrets.WINDOWS_CERT_PASSWORD }}
