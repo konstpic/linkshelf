@@ -1,0 +1,107 @@
+name: Build Release
+
+on:
+  push:
+    tags:
+      - 'v*'  # Триггер на теги вида v1.0.0, v1.2.3 и т.д.
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [macos-latest, windows-latest, ubuntu-latest]
+        include:
+          - os: macos-latest
+            platform: mac
+          - os: windows-latest
+            platform: win
+          - os: ubuntu-latest
+            platform: linux
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build extensions
+        run: npm run build:extensions
+
+      - name: Build renderer
+        run: npm run build:renderer
+
+      - name: Build application
+        run: npm run build:${{ matrix.platform }}
+        env:
+          # Для macOS подпись (если нужна)
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+          # Для Windows подпись (если нужна)
+          # CSC_LINK: ${{ secrets.WINDOWS_CERT }}
+          # CSC_KEY_PASSWORD: ${{ secrets.WINDOWS_CERT_PASSWORD }}
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.platform }}-builds
+          path: |
+            release/**/*.dmg
+            release/**/*.exe
+            release/**/*.AppImage
+            release/**/*.deb
+            release/**/*.zip
+          retention-days: 30
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-artifacts
+
+      - name: Extract version from tag
+        id: tag_version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Prepare release files
+        run: |
+          # Перемещаем все файлы в корень release-artifacts
+          find release-artifacts -type f -exec mv {} release-artifacts/ \;
+          # Удаляем пустые директории
+          find release-artifacts -type d -empty -delete
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ steps.tag_version.outputs.VERSION }}
+          body: |
+            ## LinkShelf ${{ steps.tag_version.outputs.VERSION }}
+            
+            ### Downloads
+            - **macOS**: DMG installer
+            - **Windows**: NSIS installer and portable version
+            - **Linux**: AppImage and DEB package
+            
+            ### Changes
+            See [commits](https://github.com/${{ github.repository }}/compare/${{ github.event.before }}...${{ github.sha }})
+          files: |
+            release-artifacts/*
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
