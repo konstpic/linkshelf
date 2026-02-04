@@ -57,12 +57,23 @@ jobs:
           # CSC_LINK: ${{ secrets.WINDOWS_CERT }}
           # CSC_KEY_PASSWORD: ${{ secrets.WINDOWS_CERT_PASSWORD }}
 
-      - name: List release files
+      - name: List release files (Unix)
+        if: matrix.os != 'windows-latest'
+        shell: bash
         run: |
           echo "=== Release directory structure ==="
-          find release -type f -name "*.dmg" -o -name "*.exe" -o -name "*.AppImage" -o -name "*.deb" -o -name "*.zip" | head -20
+          find release -type f \( -name "*.dmg" -o -name "*.exe" -o -name "*.AppImage" -o -name "*.deb" -o -name "*.zip" \) 2>/dev/null | head -20 || echo "No files found"
           echo "=== All files in release ==="
-          ls -la release/ || true
+          ls -la release/ 2>/dev/null || echo "Directory not found or empty"
+
+      - name: List release files (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          Write-Host "=== Release directory structure ==="
+          Get-ChildItem -Path release -Recurse -File -Include *.dmg,*.exe,*.AppImage,*.deb,*.zip -ErrorAction SilentlyContinue | Select-Object -First 20 | ForEach-Object { $_.FullName }
+          Write-Host "=== All files in release ==="
+          Get-ChildItem -Path release -ErrorAction SilentlyContinue | Format-Table Name, Length, LastWriteTime
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
