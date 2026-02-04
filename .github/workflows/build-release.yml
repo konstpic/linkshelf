@@ -47,7 +47,7 @@ jobs:
 
       - name: Build application
         continue-on-error: false
-        run: npm run build:${{ matrix.platform }} -- --publish never
+        run: npm run build:${{ matrix.platform }}
         env:
           # Для macOS подпись (если нужна)
           CSC_IDENTITY_AUTO_DISCOVERY: false
