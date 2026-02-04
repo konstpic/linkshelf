@@ -76,7 +76,6 @@
       "entitlements": "entitlements.mac.plist",
       "entitlements-inherit": "entitlements.mac.plist"
     },
-    "osxNotarize": undefined,
     "win": {
       "target": [
         {

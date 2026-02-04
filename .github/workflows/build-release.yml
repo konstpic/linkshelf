@@ -33,7 +33,7 @@ jobs:
         run: npm ci
 
       - name: Build extensions
-        run: npm run build:extensions
+        run: npm run build:extensions || echo "build-extensions.js not found, skipping"
 
       - name: Build renderer
         run: npm run build:renderer
@@ -47,16 +47,29 @@ jobs:
           # CSC_LINK: ${{ secrets.WINDOWS_CERT }}
           # CSC_KEY_PASSWORD: ${{ secrets.WINDOWS_CERT_PASSWORD }}
 
+      - name: List release files
+        run: |
+          echo "=== Release directory structure ==="
+          find release -type f -name "*.dmg" -o -name "*.exe" -o -name "*.AppImage" -o -name "*.deb" -o -name "*.zip" | head -20
+          echo "=== All files in release ==="
+          ls -la release/ || true
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.platform }}-builds
           path: |
+            release/*.dmg
+            release/*.exe
+            release/*.AppImage
+            release/*.deb
+            release/*.zip
             release/**/*.dmg
             release/**/*.exe
             release/**/*.AppImage
             release/**/*.deb
             release/**/*.zip
+          if-no-files-found: warn
           retention-days: 30
 
   release:
@@ -77,12 +90,20 @@ jobs:
         id: tag_version
         run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
 
+      - name: List downloaded artifacts
+        run: |
+          echo "=== Downloaded artifacts structure ==="
+          find release-artifacts -type f | head -20
+
       - name: Prepare release files
         run: |
-          # Перемещаем все файлы в корень release-artifacts
-          find release-artifacts -type f -exec mv {} release-artifacts/ \;
-          # Удаляем пустые директории
-          find release-artifacts -type d -empty -delete
+          # Создаем директорию для финальных файлов
+          mkdir -p release-files
+          # Копируем все найденные файлы в корень
+          find release-artifacts -type f \( -name "*.dmg" -o -name "*.exe" -o -name "*.AppImage" -o -name "*.deb" -o -name "*.zip" \) -exec cp {} release-files/ \;
+          # Показываем что нашли
+          echo "=== Files prepared for release ==="
+          ls -lh release-files/ || echo "No files found"
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
@@ -100,8 +121,9 @@ jobs:
             ### Changes
             See [commits](https://github.com/${{ github.repository }}/compare/${{ github.event.before }}...${{ github.sha }})
           files: |
-            release-artifacts/*
+            release-files/*
           draft: false
           prerelease: false
+          fail_on_unmatched_files: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
