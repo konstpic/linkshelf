@@ -129,21 +129,7 @@ jobs:
           echo "=== Files prepared for release ==="
           ls -lh release-files/ || echo "No files found"
 
-      - name: Check if release exists
-        id: check_release
-        run: |
-          if gh release view "${{ github.ref_name }}" 2>/dev/null; then
-            echo "exists=true" >> $GITHUB_OUTPUT
-            echo "Release already exists, will update it"
-          else
-            echo "exists=false" >> $GITHUB_OUTPUT
-            echo "Release does not exist, will create it"
-          fi
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        continue-on-error: true
-
-      - name: Create or Update Release
+      - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ github.ref_name }}
