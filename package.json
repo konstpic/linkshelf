@@ -67,14 +67,8 @@
       "hardenedRuntime": true,
       "gatekeeperAssess": false,
       "entitlements": "entitlements.mac.plist",
-      "entitlementsInherit": "entitlements.mac.plist"
-    },
-    "osxSign": {
-      "identity": "App Self Signed",
-      "hardenedRuntime": true,
-      "gatekeeper-assess": false,
-      "entitlements": "entitlements.mac.plist",
-      "entitlements-inherit": "entitlements.mac.plist"
+      "entitlementsInherit": "entitlements.mac.plist",
+      "identity": "App Self Signed"
     },
     "win": {
       "target": [
@@ -88,8 +82,7 @@
         }
       ],
       "icon": "assets/icon.png",
-      "executableName": "LinkShelf",
-      "publisherName": "k.pichugin"
+      "executableName": "LinkShelf"
     },
     "linux": {
       "target": [
