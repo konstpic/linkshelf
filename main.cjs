@@ -545,8 +545,8 @@ app.whenReady().then(() => {
 })
 
 app.on('window-all-closed', () => {
-  globalShortcut.unregisterAll()
-  if (process.platform !== 'darwin') app.quit()
+  // Не закрываем приложение на всех платформах - оно остается в фоне для работы горячих клавиш
+  // Приложение закрывается только через меню трея или Cmd+Q / Ctrl+Q
 })
 
 app.on('before-quit', () => {
