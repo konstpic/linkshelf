@@ -66,3 +66,13 @@ export function fetchPreviewImage(url) {
   if (api) return api.fetchPreviewImage(url)
   return Promise.resolve('')
 }
+
+export function fetchPageMeta(url) {
+  if (api) return api.fetchPageMeta(url)
+  return Promise.resolve({ previewImage: '', favicon: '' })
+}
+
+export function fetchImageBlob(url) {
+  if (api) return api.fetchImageBlob(url)
+  return Promise.resolve(null)
+}

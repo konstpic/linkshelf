@@ -15,6 +15,8 @@ contextBridge.exposeInMainWorld('linkShelfAPI', {
   fetchFavicon: (url) => ipcRenderer.invoke('links:fetchFavicon', url),
   fetchPageTitle: (url) => ipcRenderer.invoke('links:fetchPageTitle', url),
   fetchPreviewImage: (url) => ipcRenderer.invoke('links:fetchPreviewImage', url),
+  fetchPageMeta: (url) => ipcRenderer.invoke('links:fetchPageMeta', url),
+  fetchImageBlob: (url) => ipcRenderer.invoke('links:fetchImageBlob', url),
   onOpenAddModal: (callback) => {
     const handler = () => callback()
     ipcRenderer.on('open-add-modal', handler)
@@ -54,5 +56,10 @@ contextBridge.exposeInMainWorld('linkShelfAPI', {
     const handler = () => callback()
     ipcRenderer.on('data-reload', handler)
     return () => ipcRenderer.removeListener('data-reload', handler)
+  },
+  onFetchPreviewLog: (callback) => {
+    const handler = (_e, payload) => callback(payload)
+    ipcRenderer.on('links:fetchPreviewLog', handler)
+    return () => ipcRenderer.removeListener('links:fetchPreviewLog', handler)
   },
 })

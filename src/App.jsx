@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import {
   DndContext,
   closestCenter,
@@ -11,6 +11,8 @@ import { SortableContext, arrayMove, rectSortingStrategy } from '@dnd-kit/sortab
 import { useDataStore } from './hooks/useDataStore'
 import { openExternal, exportData, importData, importBookmarks, openDataFolder, setDataPath, getPendingAddData, openExtensionInBrowser } from './api/linkShelf'
 import { getDomain } from './utils/url'
+import { removeCachedFaviconUrl } from './utils/faviconCache'
+import { removeCachedPreviewUrl } from './utils/previewCache'
 import Sidebar from './components/Sidebar'
 import LinkCard from './components/LinkCard'
 import SortableLinkCard from './components/SortableLinkCard'
@@ -115,6 +117,11 @@ export default function App() {
     const unsubReload = api.onDataReload?.(() => reload())
     const unsubHelp = api.onOpenHelp?.(() => setHelpModalOpen(true))
     const unsubOnboarding = api.onOpenOnboarding?.(() => setOnboardingOpen(true))
+    const unsubPreviewLog = api.onFetchPreviewLog?.((payload) => {
+      if (payload.phase === 'start') console.log('[LinkShelf] GET (preview)', payload.url)
+      if (payload.phase === 'end') console.log('[LinkShelf] preview', payload.url, '→', payload.previewUrl || '(none)')
+      if (payload.phase === 'error') console.warn('[LinkShelf] preview error', payload.url, payload.err)
+    })
     getPendingAddData?.().then((data) => {
       if (data && data.url) setModalLink(data)
     })
@@ -128,6 +135,7 @@ export default function App() {
       unsubReload?.()
       unsubHelp?.()
       unsubOnboarding?.()
+      unsubPreviewLog?.()
     }
   }, [reload])
 
@@ -135,6 +143,26 @@ export default function App() {
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(KeyboardSensor)
   )
+
+  const updateLinkPreview = useCallback((link, previewImageUrl) => {
+    if (!link?.id || !previewImageUrl) return
+    save((prev) => ({
+      ...prev,
+      links: prev.links.map((l) =>
+        l.id === link.id ? { ...l, previewImage: previewImageUrl } : l
+      ),
+    }))
+  }, [save])
+
+  const updateLinkFavicon = useCallback((link, faviconUrl) => {
+    if (!link?.id || faviconUrl == null) return
+    save((prev) => ({
+      ...prev,
+      links: prev.links.map((l) =>
+        l.id === link.id ? { ...l, favicon: faviconUrl } : l
+      ),
+    }))
+  }, [save])
 
   if (!loaded) {
     return (
@@ -195,6 +223,9 @@ export default function App() {
   }
 
   const deleteLink = (id) => {
+    const link = links.find((l) => l.id === id)
+    if (link?.favicon) removeCachedFaviconUrl(link.favicon)
+    if (link?.previewImage) removeCachedPreviewUrl(link.previewImage)
     save({ categories, links: links.filter((l) => l.id !== id) })
   }
 
@@ -453,6 +484,8 @@ export default function App() {
                       onEdit={() => setModalLink(link)}
                       onDelete={deleteLink}
                       onTogglePinned={togglePinned}
+                      onUpdatePreview={updateLinkPreview}
+                      onUpdateFavicon={updateLinkFavicon}
                       onContextMenu={handleCardContextMenu}
                     />
                   ))}
@@ -469,6 +502,8 @@ export default function App() {
                   onEdit={() => setModalLink(link)}
                   onDelete={deleteLink}
                   onTogglePinned={togglePinned}
+                  onUpdatePreview={updateLinkPreview}
+                  onUpdateFavicon={updateLinkFavicon}
                   onContextMenu={handleCardContextMenu}
                 />
               ))}

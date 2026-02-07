@@ -23,9 +23,17 @@ export function useDataStore() {
     load()
   }, [load])
 
-  const save = useCallback((newData) => {
-    setData(newData)
-    saveLinks(newData)
+  const save = useCallback((newDataOrUpdater) => {
+    if (typeof newDataOrUpdater === 'function') {
+      setData((prev) => {
+        const next = newDataOrUpdater(prev)
+        saveLinks(next)
+        return next
+      })
+    } else {
+      setData(newDataOrUpdater)
+      saveLinks(newDataOrUpdater)
+    }
   }, [])
 
   const reload = useCallback(() => {

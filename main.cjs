@@ -2,12 +2,10 @@
 // Отключаем все предупреждения безопасности (приложение только для личного использования)
 process.env.ELECTRON_DISABLE_SECURITY_WARNINGS = '1'
 
-const { app, BrowserWindow, ipcMain, Menu, shell, session, dialog, globalShortcut, Tray, nativeImage } = require('electron')
+const { app, BrowserWindow, ipcMain, Menu, shell, session, dialog, globalShortcut, Tray, nativeImage, net } = require('electron')
 const path = require('path')
 const fs   = require('fs')
 const { exec } = require('child_process')
-const https = require('https')
-const http = require('http')
 const { parseBookmarksHTML } = require('./bookmarksParser.cjs')
 
 function getDomainFromUrl(url) {
@@ -20,50 +18,113 @@ function getDomainFromUrl(url) {
 }
 
 function fetchPageTitle(url) {
-  return new Promise((resolve) => {
-    const protocol = url.startsWith('https') ? https : http
-    const req = protocol.get(url, { headers: { 'User-Agent': 'LinkShelf/1.0' }, timeout: 8000 }, (res) => {
-      const chunks = []
-      res.on('data', (chunk) => chunks.push(chunk))
-      res.on('end', () => {
-        const html = Buffer.concat(chunks).toString('utf-8')
-        const match = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)
-        resolve(match ? match[1].replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim().slice(0, 200) : '')
-      })
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 8000)
+  return net
+    .fetch(url, { headers: { 'User-Agent': 'LinkShelf/1.0' }, signal: controller.signal })
+    .then((res) => (res.ok ? res.text() : ''))
+    .then((html) => {
+      clearTimeout(timeout)
+      const match = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)
+      return match ? match[1].replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim().slice(0, 200) : ''
     })
-    req.on('error', () => resolve(''))
-    req.on('timeout', () => { req.destroy(); resolve('') })
-  })
+    .catch(() => {
+      clearTimeout(timeout)
+      return ''
+    })
 }
 
-function fetchPagePreviewImage(url) {
-  return new Promise((resolve) => {
-    const protocol = url.startsWith('https') ? https : http
-    const req = protocol.get(url, { headers: { 'User-Agent': 'LinkShelf/1.0' }, timeout: 5000 }, (res) => {
-      const chunks = []
-      res.on('data', (chunk) => chunks.push(chunk))
-      res.on('end', () => {
-        const html = Buffer.concat(chunks).toString('utf-8')
-        const ogMatch = html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i) ||
-          html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i)
-        const twMatch = html.match(/<meta[^>]+name=["']twitter:image["'][^>]+content=["']([^"']+)["']/i) ||
-          html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+name=["']twitter:image["']/i)
-        const raw = (ogMatch && ogMatch[1]) || (twMatch && twMatch[1])
-        if (!raw || !raw.trim()) {
-          resolve('')
-          return
-        }
-        try {
-          const absolute = raw.startsWith('http') ? raw : new URL(raw.trim(), url).href
-          resolve(absolute)
-        } catch {
-          resolve('')
-        }
-      })
-    })
-    req.on('error', () => resolve(''))
-    req.on('timeout', () => { req.destroy(); resolve('') })
+function getBaseUrlFromHtml(html, pageUrl) {
+  const baseMatch = html.match(/<base[^>]+href=["']([^"']+)["']/i)
+  if (!baseMatch || !baseMatch[1]) return pageUrl
+  try {
+    const base = baseMatch[1].trim()
+    return base.startsWith('http') ? base : new URL(base, pageUrl).href
+  } catch {
+    return pageUrl
+  }
+}
+
+function parseFaviconFromHtml(html, pageUrl) {
+  const baseUrl = getBaseUrlFromHtml(html, pageUrl)
+  const linkTagRegex = /<link\s[^>]*>/gi
+  const candidates = []
+  let tagMatch
+  while ((tagMatch = linkTagRegex.exec(html)) !== null) {
+    const tag = tagMatch[0]
+    const relMatch = tag.match(/\brel=["']([^"']*)["']/i)
+    const hrefMatch = tag.match(/\bhref=["']([^"']*)["']/i)
+    if (!hrefMatch || !hrefMatch[1] || !relMatch) continue
+    const rel = (relMatch[1] || '').toLowerCase().trim()
+    const href = hrefMatch[1].trim()
+    if (!href || href === '#') continue
+    const isIcon = (/\bicon\b/.test(rel) && !/mask-icon/.test(rel)) || rel === 'shortcut icon' || rel === 'icon shortcut'
+    const isAppleTouch = /apple-touch-icon/.test(rel)
+    if (!isIcon && !isAppleTouch) continue
+    let size = 0
+    const sizesMatch = tag.match(/\bsizes=["']([^"']*)["']/i)
+    if (sizesMatch && sizesMatch[1]) {
+      const s = sizesMatch[1].trim().toLowerCase()
+      const numMatch = s.match(/(\d+)/)
+      if (numMatch) size = parseInt(numMatch[1], 10)
+      if (s.includes('x') && s.match(/(\d+)\s*x\s*(\d+)/)) {
+        const [, w, h] = s.match(/(\d+)\s*x\s*(\d+)/)
+        size = Math.max(parseInt(w, 10), parseInt(h, 10))
+      }
+    }
+    try {
+      const absolute = href.startsWith('http') ? href : new URL(href, baseUrl).href
+      candidates.push({ url: absolute, size: isIcon ? size : 0, isAppleTouch: !!isAppleTouch })
+    } catch {}
+  }
+  if (candidates.length === 0) return ''
+  candidates.sort((a, b) => {
+    if (a.isAppleTouch && !b.isAppleTouch) return 1
+    if (!a.isAppleTouch && b.isAppleTouch) return -1
+    return (b.size || 0) - (a.size || 0)
   })
+  return candidates[0].url
+}
+
+function fetchPageMeta(url) {
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 10000)
+  return net
+    .fetch(url, {
+      headers: { 'User-Agent': 'LinkShelf/1.0' },
+      signal: controller.signal,
+    })
+    .then((res) => (res.ok ? res.text() : Promise.reject(new Error('HTTP ' + res.status))))
+    .then((html) => {
+      clearTimeout(timeout)
+      const ogMatch = html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i) ||
+        html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i)
+      const twMatch = html.match(/<meta[^>]+name=["']twitter:image["'][^>]+content=["']([^"']+)["']/i) ||
+        html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+name=["']twitter:image["']/i)
+      let previewImage = ''
+      const rawPreview = (ogMatch && ogMatch[1]) || (twMatch && twMatch[1])
+      if (rawPreview && rawPreview.trim()) {
+        try {
+          previewImage = rawPreview.startsWith('http') ? rawPreview : new URL(rawPreview.trim(), url).href
+        } catch {}
+      }
+      let favicon = parseFaviconFromHtml(html, url)
+      if (!favicon) {
+        try {
+          const u = new URL(url)
+          favicon = u.origin + '/favicon.ico'
+        } catch {}
+      }
+      if (!favicon) {
+        const domain = getDomainFromUrl(url)
+        if (domain) favicon = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=64`
+      }
+      return { previewImage, favicon: favicon || '' }
+    })
+    .catch(() => {
+      clearTimeout(timeout)
+      return { previewImage: '', favicon: '' }
+    })
 }
 
 // Дополнительно отключаем предупреждения через command line
@@ -211,6 +272,22 @@ ipcMain.handle('links:fetchFavicon', (_event, url) => {
   return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=64`
 })
 
+ipcMain.handle('links:fetchImageBlob', async (_event, url) => {
+  if (!url || !url.startsWith('http')) return null
+  try {
+    const res = await net.fetch(url, {
+      headers: { 'User-Agent': 'LinkShelf/1.0' },
+    })
+    if (!res.ok) return null
+    const ab = await res.arrayBuffer()
+    const mimeType = res.headers.get('content-type') || 'image/png'
+    const base64 = Buffer.from(ab).toString('base64')
+    return { base64, mimeType: mimeType.split(';')[0].trim() }
+  } catch {
+    return null
+  }
+})
+
 ipcMain.handle('links:fetchPageTitle', async (_event, url) => {
   try {
     return await fetchPageTitle(url)
@@ -219,12 +296,51 @@ ipcMain.handle('links:fetchPageTitle', async (_event, url) => {
   }
 })
 
-ipcMain.handle('links:fetchPreviewImage', async (_event, url) => {
-  try {
-    return await fetchPagePreviewImage(url)
-  } catch {
-    return ''
+const PREVIEW_CONCURRENCY = 6
+const previewQueue = []
+let previewRunning = 0
+
+function processPreviewQueue() {
+  if (previewRunning >= PREVIEW_CONCURRENCY || previewQueue.length === 0) return
+  const { url, resolve } = previewQueue.shift()
+  previewRunning += 1
+  if (mainWindow?.webContents && !app.isPackaged) {
+    mainWindow.webContents.send('links:fetchPreviewLog', { phase: 'start', url })
   }
+  fetchPageMeta(url)
+    .then((result) => {
+      if (mainWindow?.webContents && !app.isPackaged) {
+        mainWindow.webContents.send('links:fetchPreviewLog', { phase: 'end', url, previewUrl: result.previewImage || '', faviconUrl: result.favicon || '' })
+      }
+      resolve(result)
+    })
+    .catch((e) => {
+      if (mainWindow?.webContents && !app.isPackaged) {
+        mainWindow.webContents.send('links:fetchPreviewLog', { phase: 'error', url, err: e?.message || String(e) })
+      }
+      resolve({ previewImage: '', favicon: '' })
+    })
+    .finally(() => {
+      previewRunning -= 1
+      processPreviewQueue()
+    })
+}
+
+ipcMain.handle('links:fetchPageMeta', (_event, url) => {
+  return new Promise((resolve) => {
+    previewQueue.push({ url, resolve })
+    processPreviewQueue()
+  })
+})
+
+ipcMain.handle('links:fetchPreviewImage', (_event, url) => {
+  return new Promise((resolve) => {
+    previewQueue.push({
+      url,
+      resolve: (result) => resolve(result.previewImage),
+    })
+    processPreviewQueue()
+  })
 })
 
 ipcMain.handle('links:importBookmarks', async () => {
@@ -439,6 +555,12 @@ function createWindow() {
         { role: 'copy' },
         { role: 'paste' },
         { role: 'selectAll' },
+      ],
+    },
+    {
+      label: 'View',
+      submenu: [
+        { role: 'toggleDevTools' },
       ],
     },
   ])

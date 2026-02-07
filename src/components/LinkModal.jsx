@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
-import { normalizeUrl } from '../utils/url'
+import { normalizeUrl, getFaviconUrl } from '../utils/url'
 import { getEmoji } from '../utils/emoji'
-import { fetchPageTitle, fetchPreviewImage } from '../api/linkShelf'
+import { fetchPageTitle, fetchPageMeta } from '../api/linkShelf'
 
 function parseTagsStr(str) {
   return str
@@ -18,6 +18,7 @@ export default function LinkModal({ link, categories, onSave, onClose }) {
   const [tagsStr, setTagsStr] = useState(Array.isArray(link?.tags) ? link.tags.join(', ') : '')
   const [pinned, setPinned] = useState(!!link?.pinned)
   const [loadingTitle, setLoadingTitle] = useState(false)
+  const [saving, setSaving] = useState(false)
 
   useEffect(() => {
     if (link) {
@@ -47,23 +48,32 @@ export default function LinkModal({ link, categories, onSave, onClose }) {
 
   const handleSave = async () => {
     if (!valid) return
-    const now = Date.now()
-    const tags = parseTagsStr(tagsStr)
-    const normalizedUrl = normalizeUrl(url)
-    const previewImage = link?.previewImage ?? (await fetchPreviewImage(normalizedUrl)) ?? ''
-    onSave({
-      id: link?.id ?? String(now),
-      title: title.trim(),
-      url: normalizedUrl,
-      category,
-      tags,
-      description: description.trim(),
-      pinned,
-      order: link?.order ?? 0,
-      createdAt: link?.createdAt ?? now,
-      favicon: link?.favicon ?? '',
-      previewImage,
-    })
+    setSaving(true)
+    try {
+      const now = Date.now()
+      const tags = parseTagsStr(tagsStr)
+      const normalizedUrl = normalizeUrl(url)
+      const meta = link?.previewImage && link?.favicon
+        ? { previewImage: link.previewImage, favicon: link.favicon }
+        : await fetchPageMeta(normalizedUrl)
+      const previewImage = link?.previewImage ?? meta.previewImage ?? ''
+      const faviconUrl = link?.favicon || meta.favicon || getFaviconUrl(normalizedUrl) || ''
+      onSave({
+        id: link?.id ?? String(now),
+        title: title.trim(),
+        url: normalizedUrl,
+        category,
+        tags,
+        description: description.trim(),
+        pinned,
+        order: link?.order ?? 0,
+        createdAt: link?.createdAt ?? now,
+        favicon: faviconUrl,
+        previewImage,
+      })
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -143,9 +153,9 @@ export default function LinkModal({ link, categories, onSave, onClose }) {
           </div>
         </div>
         <div className="modal-footer">
-          <button className="btn-cancel" onClick={onClose}>Отмена</button>
-          <button className="btn-save" disabled={!valid} onClick={handleSave}>
-            {isEdit ? 'Сохранить' : 'Добавить'}
+          <button className="btn-cancel" onClick={onClose} disabled={saving}>Отмена</button>
+          <button className="btn-save" disabled={!valid || saving} onClick={handleSave}>
+            {saving ? 'Загрузка превью…' : isEdit ? 'Сохранить' : 'Добавить'}
           </button>
         </div>
       </div>
