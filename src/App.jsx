@@ -167,8 +167,29 @@ export default function App() {
   if (!loaded) {
     return (
       <div className="app-loading">
-        <div className="app-loading-spinner" />
-        <p>Загрузка…</p>
+        <div className="app-loading-bg" aria-hidden="true" />
+        <div className="app-loading-content">
+          <h1 className="app-loading-title">LinkShelf</h1>
+          <p className="app-loading-subtitle">Загрузка ссылок…</p>
+          <div className="app-loading-shelf">
+            <span className="app-loading-shelf-bar" style={{ '--i': 0 }} />
+            <span className="app-loading-shelf-bar" style={{ '--i': 1 }} />
+            <span className="app-loading-shelf-bar" style={{ '--i': 2 }} />
+            <span className="app-loading-shelf-bar" style={{ '--i': 3 }} />
+          </div>
+          <div className="app-loading-dots">
+            <span className="app-loading-dot" style={{ '--i': 0 }} />
+            <span className="app-loading-dot" style={{ '--i': 1 }} />
+            <span className="app-loading-dot" style={{ '--i': 2 }} />
+          </div>
+        </div>
+        <div className="app-loading-floats" aria-hidden="true">
+          <span className="app-loading-float" style={{ '--x': '10%', '--d': '2s' }}>🔗</span>
+          <span className="app-loading-float" style={{ '--x': '85%', '--d': '2.5s' }}>📑</span>
+          <span className="app-loading-float" style={{ '--x': '25%', '--d': '3s' }}>⭐</span>
+          <span className="app-loading-float" style={{ '--x': '70%', '--d': '2.2s' }}>🔖</span>
+          <span className="app-loading-float" style={{ '--x': '50%', '--d': '2.8s' }}>📌</span>
+        </div>
       </div>
     )
   }

@@ -76,33 +76,176 @@ body {
   flex-direction: column;
 }
 
+/* ─── Animated loading screen ─── */
 .app-loading {
   flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 16px;
+  position: relative;
+  overflow: hidden;
   background: var(--bg-primary);
   color: var(--text-secondary);
 }
 
-.app-loading p {
+.app-loading-bg {
+  position: absolute;
+  inset: -50%;
+  background:
+    radial-gradient(ellipse 80% 50% at 50% 0%, var(--accent-dim) 0%, transparent 55%),
+    radial-gradient(ellipse 60% 40% at 80% 100%, rgba(99, 102, 241, 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse 50% 30% at 20% 80%, rgba(99, 102, 241, 0.06) 0%, transparent 45%);
+  animation: app-loading-bg-pulse 4s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes app-loading-bg-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.85; transform: scale(1.05); }
+}
+
+.app-loading-content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+.app-loading-title {
+  font-size: clamp(28px, 5vw, 42px);
+  font-weight: 700;
+  margin: 0;
+  letter-spacing: -0.02em;
+  background: linear-gradient(
+    135deg,
+    var(--text-primary) 0%,
+    var(--accent) 35%,
+    var(--text-secondary) 70%,
+    var(--accent) 100%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: app-loading-title-shine 3s ease-in-out infinite;
+}
+
+@keyframes app-loading-title-shine {
+  0%, 100% { background-position: 0% center; }
+  50% { background-position: 100% center; }
+}
+
+.app-loading-subtitle {
   font-size: 14px;
   margin: 0;
+  color: var(--text-muted);
+  animation: app-loading-fade 2s ease-in-out infinite;
 }
 
-.app-loading-spinner {
-  width: 32px;
-  height: 32px;
-  border: 3px solid var(--border);
-  border-top-color: var(--accent);
+@keyframes app-loading-fade {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+.app-loading-shelf {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.app-loading-shelf-bar {
+  display: block;
+  width: 120px;
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--accent),
+    var(--accent-dim),
+    var(--accent),
+    transparent
+  );
+  background-size: 200% 100%;
+  animation: app-loading-shelf-wave 1.8s ease-in-out infinite;
+  animation-delay: calc(var(--i) * 0.12s);
+  opacity: 0.5;
+}
+
+.app-loading-shelf-bar:nth-child(odd) {
+  width: 100px;
+  margin-left: 10px;
+}
+
+@keyframes app-loading-shelf-wave {
+  0%, 100% { background-position: 0% 0; opacity: 0.4; }
+  50% { background-position: 100% 0; opacity: 0.9; }
+}
+
+.app-loading-dots {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.app-loading-dot {
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
-  animation: app-loading-spin 0.8s linear infinite;
+  background: var(--accent);
+  animation: app-loading-dot-bounce 1.2s ease-in-out infinite;
+  animation-delay: calc(var(--i) * 0.15s);
 }
 
-@keyframes app-loading-spin {
-  to { transform: rotate(360deg); }
+@keyframes app-loading-dot-bounce {
+  0%, 100% { transform: translateY(0) scale(1); opacity: 0.6; }
+  50% { transform: translateY(-6px) scale(1.2); opacity: 1; }
+}
+
+.app-loading-floats {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.app-loading-float {
+  position: absolute;
+  left: var(--x);
+  top: 15%;
+  font-size: 20px;
+  opacity: 0.2;
+  animation: app-loading-float 6s ease-in-out infinite;
+  animation-delay: calc(var(--d) * -0.5);
+}
+
+.app-loading-float:nth-child(2) { top: 25%; }
+.app-loading-float:nth-child(3) { top: 60%; }
+.app-loading-float:nth-child(4) { top: 75%; }
+.app-loading-float:nth-child(5) { top: 40%; }
+
+@keyframes app-loading-float {
+  0%, 100% {
+    transform: translateY(0) rotate(0deg);
+    opacity: 0.15;
+  }
+  25% {
+    transform: translateY(-12px) translateX(5px) rotate(5deg);
+    opacity: 0.25;
+  }
+  50% {
+    transform: translateY(-5px) translateX(-8px) rotate(-3deg);
+    opacity: 0.2;
+  }
+  75% {
+    transform: translateY(-15px) translateX(3px) rotate(2deg);
+    opacity: 0.22;
+  }
 }
 
 /* ─── Layout Shell ─── */
@@ -117,6 +260,12 @@ body {
   width: 100%;
   overflow: hidden;
   box-sizing: border-box;
+  animation: app-shell-fade-in 0.4s ease-out;
+}
+
+@keyframes app-shell-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 /* ─── TitleBar Area (для перетаскивания) ─── */

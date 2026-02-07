@@ -7,8 +7,10 @@ export function useDataStore() {
   const [loaded, setLoaded] = useState(false)
 
   const load = useCallback(() => {
-    return loadLinks()
-      .then((d) => {
+    const minLoadingMs = 3000
+    const delay = (ms) => new Promise((r) => setTimeout(r, ms))
+    return Promise.all([loadLinks(), delay(minLoadingMs)])
+      .then(([d]) => {
         setData(normalizeData(d ?? {}))
         setLoaded(true)
         return d
