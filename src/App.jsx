@@ -25,6 +25,7 @@ import ContextMenu from './components/ContextMenu'
 const SORT_STORAGE_KEY = 'linkshelf_sortOrder'
 const VIEW_STORAGE_KEY = 'linkshelf_viewMode'
 const THEME_STORAGE_KEY = 'linkshelf_theme'
+const LIQUID_GLASS_STORAGE_KEY = 'linkshelf_liquid_glass'
 
 function getStoredSortOrder() {
   try {
@@ -50,6 +51,14 @@ function getStoredTheme() {
   return 'dark'
 }
 
+function getStoredLiquidGlass() {
+  try {
+    const v = localStorage.getItem(LIQUID_GLASS_STORAGE_KEY)
+    return v === 'true' || v === '1'
+  } catch {}
+  return false
+}
+
 export default function App() {
   const { data, save, loaded, reload } = useDataStore()
   const [activeCategory, setActiveCategory] = useState('Всё')
@@ -59,6 +68,7 @@ export default function App() {
   const [sortOrder, setSortOrderState] = useState(getStoredSortOrder)
   const [viewMode, setViewModeState] = useState(getStoredViewMode)
   const [theme, setThemeState] = useState(getStoredTheme)
+  const [liquidGlass, setLiquidGlassState] = useState(getStoredLiquidGlass)
   const [contextMenu, setContextMenu] = useState(null)
   const [bookmarkletModalOpen, setBookmarkletModalOpen] = useState(false)
   const [moreMenuOpen, setMoreMenuOpen] = useState(false)
@@ -86,12 +96,26 @@ export default function App() {
     } catch {}
   }
 
+  const setLiquidGlass = (v) => {
+    setLiquidGlassState((prev) => {
+      const next = typeof v === 'function' ? v(prev) : v
+      try {
+        localStorage.setItem(LIQUID_GLASS_STORAGE_KEY, next ? 'true' : 'false')
+      } catch {}
+      return next
+    })
+  }
+
   useEffect(() => {
     const effective = theme === 'system'
       ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
       : theme
     document.documentElement.setAttribute('data-theme', effective)
   }, [theme])
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-liquid-glass', liquidGlass ? 'true' : 'false')
+  }, [liquidGlass])
 
   useEffect(() => {
     const mq = window.matchMedia('(prefers-color-scheme: dark)')
@@ -452,14 +476,14 @@ export default function App() {
               Вручную
             </button>
           </div>
-          <div className="theme-segment" title="Тема">
+          <div className="theme-segment theme-segment-ios" title="Тема">
             <button
               type="button"
               className={theme === 'light' ? 'theme-btn active' : 'theme-btn'}
               onClick={() => setTheme('light')}
               title="Светлая"
             >
-              ☀
+              Светлая
             </button>
             <button
               type="button"
@@ -467,7 +491,7 @@ export default function App() {
               onClick={() => setTheme('dark')}
               title="Тёмная"
             >
-              🌙
+              Тёмная
             </button>
             <button
               type="button"
@@ -475,7 +499,15 @@ export default function App() {
               onClick={() => setTheme('system')}
               title="Как в системе"
             >
-              ⚙
+              Авто
+            </button>
+            <button
+              type="button"
+              className={'liquid-glass-btn' + (liquidGlass ? ' active' : '')}
+              title="Liquid Glass (морфизм)"
+              onClick={() => setLiquidGlass((v) => !v)}
+            >
+              ◎
             </button>
           </div>
           <button className="btn-add-link" onClick={() => setModalLink({})} data-tour="add">

@@ -11,7 +11,15 @@ function getInitialTheme() {
   } catch {}
   return 'dark'
 }
+function getInitialLiquidGlass() {
+  try {
+    const v = localStorage.getItem('linkshelf_liquid_glass')
+    return v === 'true' || v === '1'
+  } catch {}
+  return false
+}
 document.documentElement.setAttribute('data-theme', getInitialTheme())
+document.documentElement.setAttribute('data-liquid-glass', getInitialLiquidGlass() ? 'true' : 'false')
 
 class ErrorBoundary extends React.Component {
   state = { error: null }

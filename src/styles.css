@@ -53,6 +53,335 @@
   --shadow-sm:      0 2px 10px rgba(0,0,0,0.08);
 }
 
+/* Liquid Glass — опция поверх светлой/тёмной темы, стили из liquid-glass-demo (горы, без розового/фиолетового) */
+
+/* Общие переменные для Liquid Glass: более прозрачные панели */
+[data-theme="dark"][data-liquid-glass="true"] {
+  --bg-primary:      rgba(255, 255, 255, 0.06);
+  --bg-sidebar:      rgba(255, 255, 255, 0.05);
+  --bg-card:         rgba(255, 255, 255, 0.06);
+  --bg-card-hover:   rgba(255, 255, 255, 0.12);
+  --bg-modal:        rgba(255, 255, 255, 0.1);
+  --bg-input:        rgba(255, 255, 255, 0.08);
+  --border:          rgba(255, 255, 255, 0.18);
+  --shadow:         0 8px 32px rgba(0, 0, 0, 0.25);
+  --shadow-sm:      0 2px 12px rgba(0, 0, 0, 0.15);
+  --radius:         12px;
+  --radius-sm:      8px;
+}
+
+/* Фон: горы + нейтральный градиент (без розового/фиолетового) */
+[data-theme="dark"][data-liquid-glass="true"] body {
+  background:
+    linear-gradient(180deg, rgba(60, 75, 110, 0.35) 0%, rgba(40, 50, 70, 0.25) 50%, rgba(30, 35, 45, 0.4) 100%),
+    url('https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1920&h=1080&fit=crop&q=90');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+}
+
+[data-theme="dark"][data-liquid-glass="true"] body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background:
+    radial-gradient(ellipse 80% 50% at 50% 0%, rgba(255, 255, 255, 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse 60% 60% at 80% 80%, rgba(180, 190, 210, 0.06) 0%, transparent 50%),
+    radial-gradient(ellipse 50% 50% at 20% 70%, rgba(200, 205, 220, 0.05) 0%, transparent 50%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Светлая основа + стекло */
+[data-theme="light"][data-liquid-glass="true"] {
+  --bg-primary:      rgba(255, 255, 255, 0.18);
+  --bg-sidebar:      rgba(255, 255, 255, 0.12);
+  --bg-card:         rgba(255, 255, 255, 0.12);
+  --bg-card-hover:   rgba(255, 255, 255, 0.22);
+  --bg-modal:        rgba(255, 255, 255, 0.25);
+  --bg-input:        rgba(255, 255, 255, 0.2);
+  --border:          rgba(255, 255, 255, 0.25);
+  --shadow:         0 12px 40px rgba(0, 0, 0, 0.12);
+  --shadow-sm:      0 4px 20px rgba(0, 0, 0, 0.08);
+  --radius:         14px;
+  --radius-sm:      10px;
+}
+
+[data-theme="light"][data-liquid-glass="true"] body {
+  background:
+    linear-gradient(180deg, rgba(220, 228, 240, 0.5) 0%, rgba(200, 210, 225, 0.35) 50%, rgba(180, 190, 205, 0.45) 100%),
+    url('https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1920&h=1080&fit=crop&q=90');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+}
+
+[data-theme="light"][data-liquid-glass="true"] body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background:
+    radial-gradient(ellipse 80% 50% at 50% 0%, rgba(255, 255, 255, 0.4) 0%, transparent 55%),
+    radial-gradient(ellipse 60% 60% at 80% 80%, rgba(255, 255, 255, 0.15) 0%, transparent 50%),
+    radial-gradient(ellipse 50% 50% at 20% 70%, rgba(255, 255, 255, 0.12) 0%, transparent 50%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Чтобы линза карточек работала при скролле: панели без фильтра — карточки преломляют body (горы) */
+[data-liquid-glass="true"] .main-content {
+  background: transparent !important;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  position: relative;
+}
+
+[data-liquid-glass="true"] .sidebar {
+  background: rgba(0, 0, 0, 0.25) !important;
+  -webkit-backdrop-filter: url(#liquid-glass-panel);
+  backdrop-filter: url(#liquid-glass-panel);
+  position: relative;
+}
+
+[data-theme="light"][data-liquid-glass="true"] .sidebar {
+  background: rgba(255, 255, 255, 0.2) !important;
+}
+
+/* Линза при наведении на пункт сайдбара */
+[data-liquid-glass="true"] .sidebar-cat-item {
+  transition: background 0.2s, box-shadow 0.2s, -webkit-backdrop-filter 0.2s, backdrop-filter 0.2s;
+}
+
+[data-liquid-glass="true"] .sidebar-cat-item:hover {
+  -webkit-backdrop-filter: url(#liquid-glass-filter);
+  backdrop-filter: url(#liquid-glass-filter);
+  background: rgba(255, 255, 255, 0.08) !important;
+  box-shadow:
+    0 4px 20px rgba(0, 0, 0, 0.15),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.15);
+}
+
+[data-theme="light"][data-liquid-glass="true"] .sidebar-cat-item:hover {
+  background: rgba(255, 255, 255, 0.25) !important;
+  box-shadow:
+    0 4px 20px rgba(0, 0, 0, 0.08),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.4);
+}
+
+[data-liquid-glass="true"] .sidebar-cat-item.active:hover {
+  -webkit-backdrop-filter: url(#liquid-glass-filter);
+  backdrop-filter: url(#liquid-glass-filter);
+}
+
+[data-liquid-glass="true"] .main-content::before,
+[data-liquid-glass="true"] .sidebar::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  box-shadow: inset 1px 1px 0 0 rgba(255, 255, 255, 0.08);
+}
+
+[data-theme="light"][data-liquid-glass="true"] .main-content::before,
+[data-theme="light"][data-liquid-glass="true"] .sidebar::before {
+  box-shadow: inset 1px 1px 0 0 rgba(255, 255, 255, 0.25);
+}
+
+/* Топбар и скролл-область: лёгкий фон, чтобы UI читался; линза только на карточках */
+[data-liquid-glass="true"] .topbar {
+  background: rgba(0, 0, 0, 0.15);
+  -webkit-backdrop-filter: url(#liquid-glass-panel);
+  backdrop-filter: url(#liquid-glass-panel);
+}
+
+[data-theme="light"][data-liquid-glass="true"] .topbar {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+@supports not ((backdrop-filter: url(#liquid-glass-filter)) or (-webkit-backdrop-filter: url(#liquid-glass-filter))) {
+  [data-liquid-glass="true"] .sidebar-cat-item:hover,
+  [data-liquid-glass="true"] .sidebar-cat-item.active:hover {
+    -webkit-backdrop-filter: saturate(160%) brightness(1.05);
+    backdrop-filter: saturate(160%) brightness(1.05);
+  }
+}
+
+@supports not ((backdrop-filter: url(#liquid-glass-panel)) or (-webkit-backdrop-filter: url(#liquid-glass-panel))) {
+  [data-liquid-glass="true"] .topbar,
+  [data-liquid-glass="true"] .sidebar {
+    -webkit-backdrop-filter: saturate(140%) brightness(1.03);
+    backdrop-filter: saturate(140%) brightness(1.03);
+  }
+  [data-liquid-glass="true"] .search-input,
+  [data-liquid-glass="true"] .field input,
+  [data-liquid-glass="true"] .field select {
+    -webkit-backdrop-filter: saturate(140%) brightness(1.03);
+    backdrop-filter: saturate(140%) brightness(1.03);
+  }
+  [data-liquid-glass="true"] .modal-overlay {
+    -webkit-backdrop-filter: blur(20px);
+    backdrop-filter: blur(20px);
+  }
+  [data-liquid-glass="true"] .modal {
+    -webkit-backdrop-filter: blur(40px) saturate(180%);
+    backdrop-filter: blur(40px) saturate(180%);
+  }
+}
+
+[data-liquid-glass="true"] .link-card {
+  position: relative;
+  background-image: radial-gradient(
+    circle at center,
+    rgba(255, 255, 255, 0.12) 0%,
+    rgba(255, 255, 255, 0.04) 35%,
+    transparent 65%
+  );
+  -webkit-backdrop-filter: url(#liquid-glass-filter);
+  backdrop-filter: url(#liquid-glass-filter);
+}
+
+@supports not ((backdrop-filter: url(#liquid-glass-filter)) or (-webkit-backdrop-filter: url(#liquid-glass-filter))) {
+  [data-liquid-glass="true"] .link-card {
+    -webkit-backdrop-filter: saturate(160%) brightness(1.05);
+    backdrop-filter: saturate(160%) brightness(1.05);
+  }
+  [data-theme="light"][data-liquid-glass="true"] .link-card {
+    -webkit-backdrop-filter: saturate(160%) brightness(1.08);
+    backdrop-filter: saturate(160%) brightness(1.08);
+  }
+}
+
+/* Спекуляр по верхнему краю (как в liquid-glass-demo) */
+[data-liquid-glass="true"] .link-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  border-radius: 20px 20px 0 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.6) 30%,
+    rgba(255, 255, 255, 0.6) 70%,
+    transparent 100%
+  );
+  opacity: 0.7;
+  pointer-events: none;
+  z-index: 2;
+}
+
+[data-theme="light"][data-liquid-glass="true"] .link-card::before {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.85) 30%,
+    rgba(255, 255, 255, 0.85) 70%,
+    transparent 100%
+  );
+  opacity: 0.8;
+}
+
+/* Слой преломления (refraction) по контуру — белые градиенты, без цветов */
+[data-liquid-glass="true"] .link-card::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: 20px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, transparent 40%, rgba(255, 255, 255, 0.06) 100%),
+    linear-gradient(225deg, rgba(255, 255, 255, 0.08) 0%, transparent 60%);
+  pointer-events: none;
+  opacity: 0.85;
+  z-index: 0;
+}
+
+[data-liquid-glass="true"] .link-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+[data-theme="light"][data-liquid-glass="true"] .link-card {
+  -webkit-backdrop-filter: url(#liquid-glass-filter);
+  backdrop-filter: url(#liquid-glass-filter);
+}
+
+/* Карточки в духе example.html: тонкая граница, один inset-блик сверху, мягкая тень */
+[data-theme="dark"][data-liquid-glass="true"] .link-card {
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 20px;
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.25);
+}
+
+[data-theme="light"][data-liquid-glass="true"] .link-card {
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 20px;
+  box-shadow:
+    0 8px 32px rgba(31, 38, 135, 0.1),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.35);
+}
+
+[data-liquid-glass="true"] .link-card:hover {
+  box-shadow:
+    0 12px 40px rgba(0, 0, 0, 0.22),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.35);
+}
+
+[data-theme="dark"][data-liquid-glass="true"] .link-card:hover {
+  border-color: rgba(255, 255, 255, 0.25);
+  box-shadow:
+    0 12px 40px rgba(0, 0, 0, 0.28),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.4);
+}
+
+[data-theme="light"][data-liquid-glass="true"] .link-card:hover {
+  border-color: rgba(255, 255, 255, 0.35);
+  box-shadow:
+    0 12px 40px rgba(31, 38, 135, 0.15),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.5);
+}
+
+/* Модалки: только размытие, без искажения (чтобы не было эффекта "ломаного" экрана) */
+[data-liquid-glass="true"] .modal-overlay {
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+}
+
+[data-liquid-glass="true"] .modal {
+  -webkit-backdrop-filter: blur(40px) saturate(180%);
+  backdrop-filter: blur(40px) saturate(180%);
+  box-shadow: inset 1px 1px 0 0 rgba(255, 255, 255, 0.12), 0 24px 64px rgba(0, 0, 0, 0.2);
+}
+
+[data-theme="light"][data-liquid-glass="true"] .modal {
+  -webkit-backdrop-filter: blur(40px) saturate(180%);
+  backdrop-filter: blur(40px) saturate(180%);
+  box-shadow:
+    inset 1px 1px 0 0 rgba(255, 255, 255, 0.55),
+    0 0 0 1px rgba(255, 255, 255, 0.4) inset,
+    0 24px 64px rgba(0, 0, 0, 0.12);
+}
+
+[data-liquid-glass="true"] .search-input,
+[data-liquid-glass="true"] .field input,
+[data-liquid-glass="true"] .field select {
+  -webkit-backdrop-filter: url(#liquid-glass-panel);
+  backdrop-filter: url(#liquid-glass-panel);
+}
+
 html, body {
   height: 100%;
   margin: 0;
@@ -74,6 +403,11 @@ body {
   min-height: 0;
   display: flex;
   flex-direction: column;
+}
+
+[data-liquid-glass="true"] #root {
+  position: relative;
+  z-index: 1;
 }
 
 /* ─── Animated loading screen ─── */
@@ -820,6 +1154,56 @@ body {
 .theme-btn.active {
   color: var(--accent-hover);
   background: var(--accent-dim);
+}
+
+/* iOS-style segment: единая капсула, активный сегмент — заливка */
+.theme-segment-ios {
+  padding: 3px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border);
+}
+
+.theme-segment-ios .theme-btn {
+  padding: 5px 10px;
+  font-size: 12px;
+  border-radius: 7px;
+  min-width: 0;
+}
+
+.theme-segment-ios .theme-btn.active {
+  background: rgba(255, 255, 255, 0.2);
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+[data-theme="light"] .theme-segment-ios .theme-btn.active {
+  background: rgba(0, 0, 0, 0.08);
+  color: var(--text-primary);
+}
+
+/* Кнопка Liquid Glass в переключателе темы */
+.liquid-glass-btn {
+  padding: 5px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-muted);
+  font-size: 16px;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
+  line-height: 1;
+}
+
+.liquid-glass-btn:hover {
+  color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.liquid-glass-btn.active {
+  color: var(--accent-hover);
+  background: var(--accent-dim);
+  border-color: rgba(99, 102, 241, 0.35);
 }
 
 .link-card-wrap {

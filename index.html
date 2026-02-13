@@ -6,6 +6,21 @@
   <title>LinkShelf</title>
 </head>
 <body>
+  <!-- SVG: линза — при прокрутке карточек фон за ними искажается как за стеклом -->
+  <svg aria-hidden="true" style="position:absolute;width:0;height:0;">
+    <defs>
+      <!-- Карточки: сильное преломление (видно при скролле) -->
+      <filter id="liquid-glass-filter" filterUnits="userSpaceOnUse" x="-500" y="-500" width="2000" height="2000" color-interpolation-filters="sRGB">
+        <feTurbulence type="fractalNoise" baseFrequency="0.012" numOctaves="3" seed="2" result="lens"/>
+        <feDisplacementMap in="SourceGraphic" in2="lens" scale="55" xChannelSelector="R" yChannelSelector="G" result="displaced"/>
+      </filter>
+      <!-- Панели: мягкая линза -->
+      <filter id="liquid-glass-panel" filterUnits="userSpaceOnUse" x="-500" y="-500" width="2000" height="2000" color-interpolation-filters="sRGB">
+        <feTurbulence type="fractalNoise" baseFrequency="0.006" numOctaves="3" seed="2" result="lens"/>
+        <feDisplacementMap in="SourceGraphic" in2="lens" scale="18" xChannelSelector="R" yChannelSelector="G" result="displaced"/>
+      </filter>
+    </defs>
+  </svg>
   <div id="root"></div>
   <script type="module" src="./src/main.jsx"></script>
 </body>
